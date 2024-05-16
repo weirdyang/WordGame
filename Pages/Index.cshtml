@@ -1,0 +1,106 @@
+﻿@page "{random:bool?}"
+@model wordgame.Pages.IndexModel
+@inject wordgame.Contracts.IWordReader wordReader
+
+@{
+    var theWord = Model.Random
+                ? wordReader.GetWord(10)
+                : wordReader.CurrentWord();
+}
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>word-game</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+</head>
+<body class="bg-gradient-to-b from-blue-50 to-gray-200">
+    <main class="m-2 p-10 rounded-xl overflow-hidden bg-blue w-full">
+        <div class="input-group flex flex-row justify-evenly flex-wrap">
+            <article class="input-item block">
+                <label class="uppercase block text-gray-700 text-sm font-bold mb-2 text-center">
+                    Word
+                </label>
+                <h1 class="text-xl font-semibold">@theWord</h1>
+            </article>
+        </div>
+        <section 
+            class="display min-w-0 w-lg flex flex-1 flex-grow flex-col flex-grow mt-2 px-4 py-2">
+            <article class="input-item block mt-2">
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                       name="word"
+                       type="text"
+                       id="word-input">
+            </article>
+            <article class="input-item block my-2 flex">
+                <button id="submit-btn" class="uppercase self-auto bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded flex flex-1 items-center justify-center py-3">
+                    SUBMIT
+                </button>
+            </article>
+
+</section>
+        <div id="table-container" class="w-full h-full hidden">
+            <table id="word-table" class="table-fixed border w-full mt-2 mb-5 h-full">
+                <thead class="w-full">
+                    <tr class="w-full">
+                        <th class="font-bold p-2 border-b text-center uppercase">Submmited words</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </main>
+    <script src="/js/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const submit = document.getElementById('submit-btn');
+            const word = document.getElementById('word-input');
+            const currentWord = "@theWord";
+            const table = document.getElementById('word-table');
+            const tableContainer = document.getElementById('table-container');
+            const tbody = table.getElementsByTagName("tbody")[0];
+            const submittedWords = [];
+            word.addEventListener("keypress", function (event) {
+                if (word.classList.contains('wrong')) {
+                    word.classList.remove('wrong');
+                };
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    submit.click();
+                }
+            });
+            submit.addEventListener('click', async () => {
+                const input = word.value;
+                if (isEmptyOrSpaces(input)) {
+                    return false;
+                }
+                const res = await fetch(`/api/check?w=${currentWord}&c=${input}`);
+                if (res.ok) {
+                    if (submittedWords
+                        .includes(input.toLowerCase())){
+                        return false;
+                    }
+                    submittedWords.push(input.toLowerCase());
+                    tableContainer.classList.remove('hidden');
+                    // Insert a row at the end of the table
+                    let newRow = table.insertRow(-1);
+                    // Insert a cell in the row at index 0
+                    let newCell = newRow.insertCell(0);
+                    newCell.classList.add("p-2", "border-b", "text-center", "uppercase");
+                    newCell.innerText = input;
+                    return;
+                }
+                word.classList.remove('wrong');
+                word.classList.add('wrong')
+            })
+        })
+    </script>
+</body>
+</html>

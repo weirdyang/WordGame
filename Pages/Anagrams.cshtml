@@ -1,0 +1,15 @@
+﻿@page
+@model wordgame.Pages.AnagramsModel
+@inject wordgame.Contracts.IWordReader wordReader
+@using wordgame.Anagrams;
+@{
+    var theWord = wordReader.GetWord(new Random().Next(8, 10));
+    var anagrams = wordReader.GetAnagrams(theWord);
+}
+
+@{
+}
+
+@string.Join(", ", Random.Shared.GetItems<string>(anagrams.ToArray(), 10))
+
+@theWord

@@ -1,4 +1,5 @@
-﻿using wordgame.Contracts;
+﻿using wordgame.Anagrams;
+using wordgame.Contracts;
 
 namespace wordgame.Services
 {
@@ -7,6 +8,15 @@ namespace wordgame.Services
         private IReadOnlyCollection<string>? _words;
         private string? _dailyWord;
         private Random random = new Random();
+
+        public List<string> GetAnagrams(string word)
+        {
+            Console.WriteLine(string.Join(", ", AnagramHelper.GetAnagrams(word, _words)));
+            Console.WriteLine("***");
+            Console.WriteLine(string.Join(", ", AnagramHelper.GetAnagramsWithFrequency(word, _words)));
+            Console.WriteLine("***");
+            return new List<string> { word };
+        }
         public bool CheckWord(string word, string toCheck)
         {
             if (toCheck.Length < 3)

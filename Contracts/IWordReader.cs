@@ -8,5 +8,7 @@
         bool CheckWord(string word, string toCheck);
         string RefreshWord();
         string CurrentWord();
+
+        List<string> GetAnagrams(string word);
     }
 }

@@ -1,5 +1,6 @@
 using Coravel;
 using Microsoft.AspNetCore.Mvc;
+using wordgame.Anagrams;
 using wordgame.Contracts;
 using wordgame.Invocables;
 using wordgame.Services;
@@ -10,6 +11,7 @@ namespace wordgame
     {
         public static void Main(string[] args)
         {
+
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddSingleton<IWordReader, WordReader>();
             builder.Services.AddRazorPages();
@@ -28,6 +30,7 @@ namespace wordgame
                         builder.Environment.WebRootPath,
                         "assets",
                         "words.txt"));
+
             app.Services
                 .GetRequiredService<IWordReader>()
                 .RefreshWord();

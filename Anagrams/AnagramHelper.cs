@@ -4,7 +4,7 @@ namespace wordgame.Anagrams
 {
     public class AnagramHelper
     {
-        public static readonly int WordOffSet = 3;
+        public static readonly int WordOffSet = 5;
 
         const string Placeholder = "$";
         public static IEnumerable<T[]> Combinations<T>(IEnumerable<T> source)
@@ -20,7 +20,15 @@ namespace wordgame.Anagrams
                  .Where((v, i) => (index & (1 << i)) != 0)
                  .ToArray());
         }
+        public static int AnagramHash(string input)
+        {
+            int output = 0;
 
+            foreach (char c in input)
+                output ^= c.GetHashCode();
+
+            return output ^ input.Length;
+        }
         public static Dictionary<char, int> GetFrequencyTable(char[] chars)
         {
             var dictionary = new Dictionary<char, int>();
@@ -34,13 +42,14 @@ namespace wordgame.Anagrams
             }
             return dictionary;
         }
-        public static List<string> GetAnagramsWithFrequency(string word, IEnumerable<string>? possibleWords = null, string? path = null)
+        public static List<string> GetAnagramsWithFrequency(
+            string word, 
+            Dictionary<string, List<string>> possibleWords)
         {
             var timer = Stopwatch.StartNew();
-
             int limit = Limit(word);
             List<char[]> wordChars = 
-                GetWordChars(word, ref possibleWords, path)
+                GetWordChars(word)
                 .Where(c => c.Length >= limit)
                 .ToList();
 
@@ -52,28 +61,18 @@ namespace wordgame.Anagrams
                 var current = string.Join("", ch);
                 checker[current] = GetFrequencyTable(ch);
             }
-
-            var test = possibleWords!
-                .Where(w => w.Length >= limit)
-                .Select(w =>
+            var results = new List<string>();
+            foreach(var key in checker.Keys)
+            {
+                if(possibleWords.TryGetValue(key, out var result))
                 {
-                    var possibleChars = w.ToCharArray();
-                    Array.Sort(possibleChars);
-                    //var possible = GetFrequencyTable(possibleChars);
-                    var isSame = checker.ContainsKey(string.Join("", possibleChars));
-                    if (isSame)
-                    {
-                        return w;
-                    }
-                    return Placeholder;
-                })
-                .Where(x => x is not Placeholder)
-                .Distinct()
-                .ToList();
+                    results.AddRange(result);
+                }
+            }
 
             timer.Stop();
             Console.WriteLine(string.Format("Frequency {0}", timer.ElapsedMilliseconds));
-            return test;
+            return results.Distinct().ToList();
 
         }
         public static List<string> GetAnagrams(string word,
@@ -82,7 +81,7 @@ namespace wordgame.Anagrams
         {
             var timer = Stopwatch.StartNew();
 
-            List<char[]> wordChars = GetWordChars(word, ref possibleWords, path);
+            List<char[]> wordChars = GetWordChars(word);
             wordChars = wordChars
                 .Where(x => x.Length >= Limit(word))
                 .ToList();
@@ -118,16 +117,13 @@ namespace wordgame.Anagrams
             return test;
         }
 
-        private static int Limit(string word)
+        public static int Limit(string word)
         {
-            return word.Length - 3;
+            return word.Length - WordOffSet;
         }
 
-        private static List<char[]> GetWordChars(string word, ref IEnumerable<string>? possibleWords, string? path)
+        private static List<char[]> GetWordChars(string word)
         {
-            Validate(possibleWords, path);
-            possibleWords = possibleWords ?? ReadFile(path!);
-
             List<char[]> wordChars = Combinations(word.ToCharArray()).ToList();
             wordChars.ForEach(x => Array.Sort(x));
             return wordChars;

@@ -4,12 +4,76 @@
 @using wordgame.Anagrams;
 @{
     var theWord = wordReader.GetWord(new Random().Next(8, 10));
-    var anagrams = wordReader.GetAnagrams(theWord);
+    var questions = wordReader.GetAnagramWords(theWord);
+    var questionWords = questions.Keys.ToArray();
+    Random.Shared.Shuffle(questionWords);
+    int totalScore = questions.Values.Count(v => v == true);
 }
 
-@{
-}
 
-@string.Join(", ", Random.Shared.GetItems<string>(anagrams.ToArray(), 10))
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>word-game</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-gradient-to-b from-blue-50 to-gray-200">
+    <main class="m-2 p-10 rounded-xl overflow-hidden bg-blue w-full">
+        <article>
+            Time left:<span id="timer">30</span>
+        </article>
+        <h1>@theWord</h1>
+        @foreach (var key in questionWords)
+        {
+            <div class="flex items-start items-center">
+                <input value="@questions[key].ToString().ToLower()" class="answer bg-gray-50 border-gray-300 focus:ring-3 focus:ring-blue-300 h-4 w-4 rounded" id="@key" aria-describedby="flowbite" type="checkbox">
+                <label id="@key-label" class="answer-label text-sm ml-3 font-medium text-gray-900" for="@key">@key</label>
+            </div>
+        }
+    </main>
+    <script src="/js/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', ev => {
+            let secondsLeft = 15;
+            const timer = document.getElementById('timer');
+            // Timer function
+            function startTimer() {
+                timer.textContent = secondsLeft;
+                let timerInterval = setInterval(
+                    () => {
+                        secondsLeft--;
+                        timer.textContent = secondsLeft;
+                        if (secondsLeft <= 0) {
+                            clearInterval(timerInterval);
+                            calculateScore();
+                        }
+                    }, 1000);
+            };
+            function calculateScore() {
+                let score = 0;
+                const answers = [...document.querySelectorAll('.answer')];
+         
+                answers.forEach(ans => {
+                    if (ans.checked && ans.value === "true") {
+                        score += 1;
+                        document.getElementById(`${ans.id}-label`).classList.add('text-green-500');
+                        return;
+                    }
+                    if (ans.checked && ans.value === "false") {
+                        document.getElementById(`${ans.id}-label`).classList.add('text-pink-500');
+                        score -= 1;
+                        return
+                    }
+                    document.getElementById(`${ans.id}-label`).classList.add('text-pink-500');
+                })
+                console.log(`total: ${@totalScore} / score: ${score}`);
+            }
+            startTimer();
 
-@theWord
+        })
+    </script>
+</body>
+</html>

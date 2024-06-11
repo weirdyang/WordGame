@@ -25,14 +25,24 @@
         <article>
             Time left:<span id="timer">30</span>
         </article>
-        <h1>@theWord</h1>
+        <div class="input-group flex flex-row justify-evenly flex-wrap">
+            <article class="input-item block">
+                <label class="uppercase block text-gray-700 text-sm font-bold mb-2 text-center">
+                    Word
+                </label>
+                <h1 class="text-xl font-semibold">@theWord</h1>
+            </article>
+        </div>
         @foreach (var key in questionWords)
         {
-            <div class="flex items-start items-center">
-                <input value="@questions[key].ToString().ToLower()" class="answer bg-gray-50 border-gray-300 focus:ring-3 focus:ring-blue-300 h-4 w-4 rounded" id="@key" aria-describedby="flowbite" type="checkbox">
-                <label id="@key-label" class="answer-label text-sm ml-3 font-medium text-gray-900" for="@key">@key</label>
+            <div class="input-group flex flex-row justify-center items-center">
+                <article class="input-item flex justify-center">
+                    <input value="@questions[key].ToString().ToLower()" class="answer bg-gray-50 border-gray-300 focus:ring-3 focus:ring-blue-300 h-4 w-4 rounded" id="@key" aria-describedby="flowbite" type="checkbox">
+                    <label id="@key-label" class="answer-label text-sm ml-3 font-medium text-gray-900" for="@key">@key</label>
+                </article>
             </div>
         }
+
     </main>
     <script src="/js/script.js"></script>
     <script>
@@ -55,7 +65,7 @@
             function calculateScore() {
                 let score = 0;
                 const answers = [...document.querySelectorAll('.answer')];
-         
+
                 answers.forEach(ans => {
                     if (ans.checked && ans.value === "true") {
                         score += 1;

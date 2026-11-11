@@ -86,6 +86,18 @@ namespace wordgame.Services
             var date = DateOnly.FromDateTime(DateTime.UtcNow);
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"word-hunt:{date:yyyy-MM-dd}"));
             var index = BitConverter.ToUInt32(bytes, 0) % (uint)_dailyCandidates.Count;
+            // Walk forward from the deterministic seed until we find a puzzle
+            // rich enough to be rewarding. Every server reaches the same choice.
+            for (var offset = 0; offset < _dailyCandidates.Count; offset++)
+            {
+                var candidate = _dailyCandidates[((int)index + offset) % _dailyCandidates.Count];
+                if (GetAnagrams(candidate).Count >= 12)
+                {
+                    _dailyWord = candidate;
+                    return _dailyWord;
+                }
+            }
+
             _dailyWord = _dailyCandidates[(int)index];
             return _dailyWord;
         }

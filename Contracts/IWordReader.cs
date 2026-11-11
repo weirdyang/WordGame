@@ -8,6 +8,7 @@ namespace wordgame.Contracts
         string RefreshWord();
         string CurrentWord();
         IReadOnlyList<string> GetAnagrams(string word);
+        Dictionary<string, bool> GetAnagramWords(string word, int number = 10);
     }
 }
 

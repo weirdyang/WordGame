@@ -80,6 +80,21 @@ namespace wordgame.Services
                 .ToList();
         }
 
+        public Dictionary<string, bool> GetAnagramWords(string word, int number = 10)
+        {
+            var validWords = GetAnagrams(word).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var answerCount = Math.Min(validWords.Count, Math.Max(1, number / 2));
+            var answers = validWords.OrderBy(_ => Random.Shared.Next()).Take(answerCount).ToArray();
+            var decoys = _words
+                .Where(candidate => candidate.Length <= word.Length && !validWords.Contains(candidate))
+                .OrderBy(_ => Random.Shared.Next())
+                .Take(Math.Max(0, number - answers.Length));
+
+            return answers.Concat(decoys)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(candidate => candidate, candidate => validWords.Contains(candidate), StringComparer.OrdinalIgnoreCase);
+        }
+
         public string RefreshWord()
         {
             if (_dailyCandidates.Count == 0) throw new InvalidOperationException("Words have not been loaded.");

@@ -1,125 +1,110 @@
-﻿using wordgame.Anagrams;
+using System.Numerics;
+using System.Security.Cryptography;
+using System.Text;
 using wordgame.Contracts;
 
 namespace wordgame.Services
 {
     public class WordReader : IWordReader
     {
-        private IReadOnlyCollection<string>? _words;
+        private HashSet<string> _words = new(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, List<string>> _wordMap = new(StringComparer.Ordinal);
+        private List<string> _dailyCandidates = [];
         private string? _dailyWord;
-        private Random random = new Random();
-        private Dictionary<string, List<string>>? _wordMap;
-        public List<string> GetAnagrams(string word)
-        {
-            return AnagramHelper.GetAnagramsWithFrequency(word, _wordMap!);
-        }
-        public bool CheckWord(string word, string toCheck)
-        {
-            if (toCheck.Length < 3)
-            {
-                return false;
-            }
-            var chars = word
-                .ToUpperInvariant()
-                .ToCharArray()
-                .ToList();
-            var checkChars = toCheck
-                .ToUpperInvariant()
-                .ToCharArray();
-
-            foreach (char c in checkChars)
-            {
-                if (!chars.Contains(c))
-                {
-                    return false;
-                }
-                // remove to prevent usage again
-                chars.Remove(c);
-            }
-            return _words!.Contains(toCheck.ToUpperInvariant());
-        }
-
-        public string GetWord(int length)
-        {
-            var considered = _words!
-                .Where(w => w.Length >= length)
-                .ToList();
-
-            return considered[random.Next(considered.Count)];
-        }
 
         public bool ReadFile(string path)
         {
-            _words = File
-                .ReadAllLines(path)
-                .Select(x => x.ToLower())
-                .ToArray();
-            _wordMap = BuildHashMap(_words);
-            return _words.Count > 0;
+            _words = File.ReadLines(path)
+                .Select(Normalize)
+                .Where(word => word.Length >= 3 && word.All(char.IsLetter))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            _wordMap = _words
+                .GroupBy(SortLetters)
+                .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.Ordinal);
+
+            _dailyCandidates = _words
+                .Where(word => word.Length is >= 7 and <= 9)
+                .OrderBy(word => word, StringComparer.Ordinal)
+                .ToList();
+
+            return _dailyCandidates.Count > 0;
         }
-        private string SortString(string input)
+
+        public string GetWord(int minimumLength)
         {
-            char[] characters = input.ToArray();
-            Array.Sort(characters);
-            return new string(characters);
+            var choices = _words.Where(word => word.Length >= minimumLength).ToArray();
+            if (choices.Length == 0) throw new InvalidOperationException("No eligible words are loaded.");
+            return choices[Random.Shared.Next(choices.Length)];
         }
-        private Dictionary<string, List<string>> BuildHashMap(IEnumerable<string> words)
+
+        public bool CheckWord(string sourceWord, string candidate)
         {
-            var wordList = words.ToList();
-            var dictionary = new Dictionary<string, List<string>>(StringComparer.InvariantCultureIgnoreCase);
-            for (int i = 0; i < words.Count(); i++)
+            var source = Normalize(sourceWord);
+            var guess = Normalize(candidate);
+
+            if (guess.Length < 3 || guess == source || !_words.Contains(guess))
+                return false;
+
+            var remaining = source.ToList();
+            foreach (var letter in guess)
             {
-                var key = SortString(wordList[i]);
-                if(dictionary.TryGetValue(key, out var value))
-                {
-                    dictionary[key] = value.Append(wordList[i]).ToList();
-                    continue;
-                }
-                dictionary[key] = [wordList[i]];
+                if (!remaining.Remove(letter)) return false;
             }
-            return dictionary;
+
+            return true;
         }
+
+        public IReadOnlyList<string> GetAnagrams(string word)
+        {
+            var normalized = Normalize(word);
+            var combinations = new HashSet<string>(StringComparer.Ordinal);
+
+            for (var mask = 1; mask < (1 << normalized.Length); mask++)
+            {
+                var length = BitOperations.PopCount((uint)mask);
+                if (length < 3 || length >= normalized.Length) continue;
+                var letters = new char[length];
+                var index = 0;
+                for (var i = 0; i < normalized.Length; i++)
+                    if ((mask & (1 << i)) != 0) letters[index++] = normalized[i];
+                combinations.Add(SortLetters(new string(letters)));
+            }
+
+            return combinations
+                .Where(_wordMap.ContainsKey)
+                .SelectMany(key => _wordMap[key])
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(candidate => candidate.Length)
+                .ThenBy(candidate => candidate, StringComparer.Ordinal)
+                .ToList();
+        }
+
         public string RefreshWord()
         {
-            _dailyWord = GetWord(10);
+            if (_dailyCandidates.Count == 0) throw new InvalidOperationException("Words have not been loaded.");
+            var date = DateOnly.FromDateTime(DateTime.UtcNow);
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"word-hunt:{date:yyyy-MM-dd}"));
+            var index = BitConverter.ToUInt32(bytes, 0) % (uint)_dailyCandidates.Count;
+            // Walk forward from the deterministic seed until we find a puzzle
+            // rich enough to be rewarding. Every server reaches the same choice.
+            for (var offset = 0; offset < _dailyCandidates.Count; offset++)
+            {
+                var candidate = _dailyCandidates[((int)index + offset) % _dailyCandidates.Count];
+                if (GetAnagrams(candidate).Count >= 12)
+                {
+                    _dailyWord = candidate;
+                    return _dailyWord;
+                }
+            }
+
+            _dailyWord = _dailyCandidates[(int)index];
             return _dailyWord;
         }
-        public Dictionary<string, bool> GetQuestionWords(string word, int number = 10)
-        {
-            return Random
-                .Shared
-                .GetItems(_words!.ToArray(), number)
-                .ToDictionary(item => item, value => CheckWord(word, value));
-        }
-        public Dictionary<string, bool> GetAnagramWords(string word, int number = 10)
-        {
-            var possibleAnagrams = GetAnagrams(word);
-            possibleAnagrams.Remove(word);
-            var anagrams = possibleAnagrams.ToArray();
-            var random = new Random();
-            var anagramsNumber = anagrams.Length >= 10 ? random.Next(5, 8) : anagrams.Length;
-            var selectedAnagrams = Random.Shared.GetItems<string>(anagrams, anagramsNumber);
-            Console.WriteLine(word);
-            Console.WriteLine(string.Join(", ", selectedAnagrams));
-            var wordLimit = AnagramHelper.Limit(word);
 
-            var selectedWords = Random.Shared
-                .GetItems(_words!
-                .Where(x => x.Length <= word.Length
-                && !selectedAnagrams.Contains(x, StringComparer.InvariantCultureIgnoreCase)).ToArray(),
-                number - anagramsNumber)
-                .ToDictionary(item => item, value => CheckWord(word, value));
-
-            foreach ( var item in selectedAnagrams)
-            {
-                selectedWords[item] = true;
-            }
-            return selectedWords;
-
-        }
-        public string CurrentWord()
-        {
-            return _dailyWord!;
-        }
+        public string CurrentWord() => _dailyWord ?? RefreshWord();
+        private static string Normalize(string value) => value.Trim().ToLowerInvariant();
+        private static string SortLetters(string value) => new(value.OrderBy(letter => letter).ToArray());
     }
 }
+

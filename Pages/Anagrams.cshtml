@@ -49,7 +49,8 @@
         .choices-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 27px 0 13px; }
         .choices-heading h2 { margin: 0; font-size: 1rem; font-weight: 900; letter-spacing: -.02em; }
         .choices-heading span { color: #68756b; font-size: .78rem; font-weight: 800; }
-        .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+        .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; transition: filter .2s, opacity .2s; }
+        .choices.is-locked { filter: blur(7px); opacity: .55; pointer-events: none; user-select: none; }
         .choice { position: relative; min-width: 0; }
         .choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
         .choice label { display: flex; align-items: center; justify-content: center; min-height: 56px; padding: 11px 10px; border: 1.5px solid var(--line); background: #fffaf0; color: var(--ink); font-size: .96rem; font-weight: 900; cursor: pointer; transition: background .14s, transform .14s, box-shadow .14s; overflow-wrap: anywhere; text-align: center; }
@@ -80,7 +81,7 @@
         .review-item.good { border-left: 4px solid #39875b; }
         .review-item.missed { border-left: 4px solid #d89b37; }
         .review-item.wrong { border-left: 4px solid #c94b3c; }
-        @media (max-width: 620px) {
+        @@media (max-width: 620px) {
             .page { padding: 0 15px 36px; }
             .topline { padding-top: 15px; }
             h1 { margin-top: 25px; }
@@ -92,7 +93,7 @@
             .action { width: 100%; }
             .review-list { grid-template-columns: 1fr; }
         }
-        @media (prefers-reduced-motion: reduce) {
+        @@media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
         }
     </style>
@@ -113,7 +114,7 @@
                 <div class="hint">Use each letter no more times than it appears.</div>
             </div>
             <div class="choices-heading"><h2>Which words are valid?</h2><span>Choose all that apply</span></div>
-            <div class="choices" id="choices">
+            <div class="choices is-locked" id="choices">
                 @foreach (var key in questionWords)
                 {
                     <div class="choice">
@@ -151,6 +152,7 @@
             const message = document.getElementById('message');
             const results = document.getElementById('results');
             const answers = [...document.querySelectorAll('.answer')];
+            const choices = document.getElementById('choices');
             const selectedCount = document.getElementById('selected-count');
             let secondsLeft = duration;
             let timerInterval = null;
@@ -208,6 +210,7 @@
                 startButton.textContent = 'Game in progress';
                 submitButton.disabled = false;
                 answers.forEach(answer => answer.disabled = false);
+                choices.classList.remove('is-locked');
                 message.textContent = 'Select the valid anagrams. You can finish early at any time.';
                 timerInterval = setInterval(() => {
                     secondsLeft--;
